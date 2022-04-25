@@ -3,6 +3,7 @@ package com.chatcrypt;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -45,6 +46,11 @@ public class Login extends AppCompatActivity {
         mLoginBtn = findViewById(R.id.login_button);
         mCreateBtn = findViewById(R.id.createNewUserText);
         forgotTextLink = findViewById(R.id.forgotPassword);
+
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        getSupportActionBar().setTitle("Login");
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         mLoginBtn.setOnClickListener(new View.OnClickListener() {
             @Override
