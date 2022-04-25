@@ -38,7 +38,6 @@ public class MainActivity extends AppCompatActivity {
     Button mLogout;
     TextView userName;
     FirebaseUser firebaseUser;
-    private FirebaseDatabase myDatabase;
     DatabaseReference databaseReference;
 
     @Override

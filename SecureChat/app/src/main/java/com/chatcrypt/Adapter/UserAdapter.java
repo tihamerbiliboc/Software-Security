@@ -1,6 +1,7 @@
 package com.chatcrypt.Adapter;
 
 import android.content.Context;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,6 +12,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.chatcrypt.MessagingActivity;
 import com.chatcrypt.Model.User;
 import com.chatcrypt.R;
 
@@ -38,6 +40,14 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.ViewHolder> {
 
         User user = mUser.get(position);
         holder.username.setText(user.getUserName());
+        holder.itemView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(mContex, MessagingActivity.class);
+                intent.putExtra("userId", user.getUserId());
+                mContex.startActivity(intent);
+            }
+        });
 
     }
 
