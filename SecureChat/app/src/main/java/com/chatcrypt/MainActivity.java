@@ -52,11 +52,7 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         getSupportActionBar().setTitle("");
 
-
-
-
-
-        if( firebaseUser == null){
+        if( firebaseUser == null || firebaseUser.getUid().equals(null)){
             startActivity(new Intent(getApplicationContext(),Login.class));
             finish();
         }

@@ -25,9 +25,18 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import java.io.UnsupportedEncodingException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 
@@ -43,6 +52,9 @@ public class MessagingActivity extends AppCompatActivity {
     MessageAdapter messageAdapter;
     List<Messages> mMessages;
     RecyclerView recyclerView;
+    private byte encryptionKey[] = {-55,26,11,18,5,109,-73,47,91,83,117,101,-22,62,-42,75};
+    private Cipher encodeCipher, decodeCipher;
+    private SecretKeySpec secretKeySpec;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,10 +85,24 @@ public class MessagingActivity extends AppCompatActivity {
         intent = getIntent();
         String uId = intent.getStringExtra("userId");
         firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
+
+        try {
+            encodeCipher = Cipher.getInstance("AES");
+            decodeCipher = Cipher.getInstance("AES");
+
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (NoSuchPaddingException e) {
+            e.printStackTrace();
+        }
+
+        secretKeySpec = new SecretKeySpec(encryptionKey, "AES");
+
         send_btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                String message = send_text.getText().toString();
+//                String message = send_text.getText().toString();
+                String message = AESEncryption(send_text.getText().toString());
                 if(!message.equals("")){
                     sendMessage(firebaseUser.getUid(), uId, message);
                 }else {
@@ -124,6 +150,11 @@ public class MessagingActivity extends AppCompatActivity {
                     Messages messages = dataSnapshot.getValue(Messages.class);
                     if(messages.getReceiver().equals(myId) && messages.getSender().equals(userId) ||
                     messages.getReceiver().equals(userId) && messages.getSender().equals(myId)){
+                        try {
+                            messages.setMessage(AESDecryption(messages.getMessage()));
+                        } catch (UnsupportedEncodingException e) {
+                            e.printStackTrace();
+                        }
                         mMessages.add(messages);
                     }
                     messageAdapter = new MessageAdapter(MessagingActivity.this, mMessages);
@@ -138,5 +169,50 @@ public class MessagingActivity extends AppCompatActivity {
 
             }
         });
+    }
+
+    private String AESEncryption(String message){
+
+        byte[] stringByte = message.getBytes();
+        byte[] encryptedByte =  new byte[stringByte.length];
+
+        try {
+            encodeCipher.init(Cipher.ENCRYPT_MODE, secretKeySpec);
+            encryptedByte = encodeCipher.doFinal(stringByte);
+        } catch (InvalidKeyException e) {
+            e.printStackTrace();
+        } catch (BadPaddingException e) {
+            e.printStackTrace();
+        } catch (IllegalBlockSizeException e) {
+            e.printStackTrace();
+        }
+        String returnString = null;
+        try {
+
+            returnString = new String(encryptedByte, "ISO-8859-1");
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        return returnString;
+    }
+
+    private String AESDecryption(String message) throws UnsupportedEncodingException {
+        byte[] encryptedByte = message.getBytes("ISO-8859-1");
+        String decriptionString = message;
+        byte[] decryption;
+
+        try {
+            decodeCipher.init(Cipher.DECRYPT_MODE, secretKeySpec);
+            decryption = decodeCipher.doFinal(encryptedByte);
+            decriptionString = new String(decryption);
+        } catch (InvalidKeyException e) {
+            e.printStackTrace();
+        } catch (BadPaddingException e) {
+            e.printStackTrace();
+        } catch (IllegalBlockSizeException e) {
+            e.printStackTrace();
+        }
+        return decriptionString;
+
     }
 }
