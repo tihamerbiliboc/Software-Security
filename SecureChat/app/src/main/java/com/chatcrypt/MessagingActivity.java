@@ -27,7 +27,9 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.io.UnsupportedEncodingException;
 import java.security.InvalidKeyException;
+import java.security.Key;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -52,9 +54,17 @@ public class MessagingActivity extends AppCompatActivity {
     MessageAdapter messageAdapter;
     List<Messages> mMessages;
     RecyclerView recyclerView;
-    private byte encryptionKey[] = {-55,26,11,18,5,109,-73,47,91,83,117,101,-22,62,-42,75};
+//    private byte encryptionKey[] = {-55,26,11,18,5,109,-73,47,91,83,117,101,-22,62,-42,75};
+
     private Cipher encodeCipher, decodeCipher;
-    private SecretKeySpec secretKeySpec;
+    private Key secretKeySpec;
+
+    private static Key getSecureRandomKey(String cipher, int keySize) {
+        byte[] secureRandomKeyBytes = new byte[keySize / 8];
+        SecureRandom secureRandom = new SecureRandom();
+        secureRandom.nextBytes(secureRandomKeyBytes);
+        return new SecretKeySpec(secureRandomKeyBytes, cipher);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,7 +106,7 @@ public class MessagingActivity extends AppCompatActivity {
             e.printStackTrace();
         }
 
-        secretKeySpec = new SecretKeySpec(encryptionKey, "AES");
+        secretKeySpec = getSecureRandomKey("AES", 256);
 
         send_btn.setOnClickListener(new View.OnClickListener() {
             @Override
