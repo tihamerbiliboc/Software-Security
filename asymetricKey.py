@@ -54,7 +54,7 @@ encrypted = read_public_key().encrypt(
         label=None
     )
 )
-print("ecripted message: ", encrypted)
+print("encripted message: ", encrypted)
 
 encrypted = bytes(encrypted)
 private_key = read_private_key()
