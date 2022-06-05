@@ -27,16 +27,25 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.KeyFactory;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.UnrecoverableEntryException;
+import java.security.cert.CertificateException;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -58,10 +67,11 @@ public class MessagingActivity extends AppCompatActivity {
     MessageAdapter messageAdapter;
     List<Messages> mMessages;
     RecyclerView recyclerView;
-    private byte encryptionKey[] = {-55,26,11,18,5,109,-73,47,91,83,117,101,-22,62,-42,75};
-    private Cipher encodeCipher, decodeCipher;
-    private SecretKeySpec secretKeySpec;
+//    private byte encryptionKey[] = {-55,26,11,18,5,109,-73,47,91,83,117,101,-22,62,-42,75};
+//    private Cipher encodeCipher, decodeCipher;
+//    private SecretKeySpec secretKeySpec;
     KeyStore keyStore = null;
+    String publicKey;
 
 
 
@@ -97,26 +107,47 @@ public class MessagingActivity extends AppCompatActivity {
         send_text = findViewById(R.id.send_text);
         intent = getIntent();
         String uId = intent.getStringExtra("userId");
-        String publicKey = intent.getStringExtra("publicKey");
+//        String publicKey = intent.getStringExtra("publicKey");
         firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
 
-        try {
-            encodeCipher = Cipher.getInstance("AES");
-            decodeCipher = Cipher.getInstance("AES");
+//        try {
+//            encodeCipher = Cipher.getInstance("AES");
+//            decodeCipher = Cipher.getInstance("AES");
 
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (NoSuchPaddingException e) {
-            e.printStackTrace();
-        }
+//        } catch (NoSuchAlgorithmException e) {
+//            e.printStackTrace();
+//        } catch (NoSuchPaddingException e) {
+//            e.printStackTrace();
+//        }
 
-        secretKeySpec = new SecretKeySpec(encryptionKey, "AES");
+//        secretKeySpec = new SecretKeySpec(encryptionKey, "AES");
+        databaseReference = FirebaseDatabase.getInstance("https://chatcrypt-23a35-default-rtdb.europe-west1.firebasedatabase.app/").getReference("users").child(uId);
+        databaseReference.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                User user = snapshot.getValue(User.class);
+                username.setText(user.getUserName());
+                readMessage(firebaseUser.getUid(), uId);
+                publicKey = user.getPublicKey();
+            }
 
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
         send_btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
 //                String message = send_text.getText().toString();
-                String message = AESEncryption(send_text.getText().toString(), publicKey);
+                String message = null;
+                try {
+                    message = AESEncryption(send_text.getText().toString(), publicKey);
+                } catch (NoSuchAlgorithmException e) {
+                    e.printStackTrace();
+                } catch (InvalidKeySpecException e) {
+                    e.printStackTrace();
+                }
                 if(!message.equals("")){
                     sendMessage(firebaseUser.getUid(), uId, message);
                 }else {
@@ -126,21 +157,7 @@ public class MessagingActivity extends AppCompatActivity {
 
             }
         });
-        databaseReference = FirebaseDatabase.getInstance("https://chatcrypt-23a35-default-rtdb.europe-west1.firebasedatabase.app/").getReference("users").child(uId);
 
-        databaseReference.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                User user = snapshot.getValue(User.class);
-                username.setText(user.getUserName());
-                readMessage(firebaseUser.getUid(), uId);
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-
-            }
-        });
     }
 
     private void sendMessage(String sender, String receiver, String message){
@@ -166,7 +183,7 @@ public class MessagingActivity extends AppCompatActivity {
                             messages.getReceiver().equals(userId) && messages.getSender().equals(myId)){
                         try {
                             messages.setMessage(AESDecryption(messages.getMessage()));
-                        } catch (UnsupportedEncodingException e) {
+                        } catch (IOException | KeyStoreException | CertificateException | NoSuchAlgorithmException | UnrecoverableEntryException e) {
                             e.printStackTrace();
                         }
                         mMessages.add(messages);
@@ -185,18 +202,22 @@ public class MessagingActivity extends AppCompatActivity {
         });
     }
 
-    private String AESEncryption(String message, String publicKey){
+    private String AESEncryption(String message, String publicKey) throws NoSuchAlgorithmException, InvalidKeySpecException {
         byte[] encodedBytes = null;
-        Key pbk = new SecretKeySpec(publicKey.getBytes(), "RSA");
+        byte[] publicBytes = MyBase64.decode(publicKey);
+        X509EncodedKeySpec keySpec = new X509EncodedKeySpec(publicBytes);
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        PublicKey pubKey = keyFactory.generatePublic(keySpec);
+
         try {
             Cipher c = Cipher.getInstance("RSA");
-            c.init(Cipher.ENCRYPT_MODE, pbk);
+            c.init(Cipher.ENCRYPT_MODE, pubKey);
             encodedBytes = c.doFinal(message.getBytes());
         } catch (Exception e) {
             Log.e("Crypto", "RSA encryption error");
         }
 
-        Toast.makeText(MessagingActivity.this,"Encoded string: " + new String(Base64.encodeToString(encodedBytes, Base64.DEFAULT)), Toast.LENGTH_SHORT).show();
+//        Toast.makeText(MessagingActivity.this,"Encoded string: " + new String(Base64.encodeToString(encodedBytes, Base64.DEFAULT)), Toast.LENGTH_SHORT).show();
 
 
         String returnString = null;
@@ -209,19 +230,21 @@ public class MessagingActivity extends AppCompatActivity {
         return returnString;
     }
 
-    private String AESDecryption(String message) throws UnsupportedEncodingException {
-
-        // Decode the encoded data with the RSA public key
+    private String AESDecryption(String message) throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException, UnrecoverableEntryException {
+        keyStore = KeyStore.getInstance("AndroidKeyStore");
+        keyStore.load(null);
+        KeyStore.Entry entry = keyStore.getEntry("cryptoChat", null);
+        PrivateKey privateKey = ((KeyStore.PrivateKeyEntry) entry).getPrivateKey();
         byte[] decodedBytes = null;
         try {
             Cipher c = Cipher.getInstance("RSA");
-            c.init(Cipher.DECRYPT_MODE, (Key) keyStore.getEntry(firebaseUser.getUid().toString(),null));
+            c.init(Cipher.DECRYPT_MODE, (Key) privateKey);
             decodedBytes = c.doFinal(message.getBytes());
         } catch (Exception e) {
             Log.e("Crypto", "RSA decryption error");
         }
 
-        Toast.makeText(MessagingActivity.this,"Decoded string: " + new String(decodedBytes), Toast.LENGTH_SHORT).show();
+
 
         byte[] encryptedByte = message.getBytes("ISO-8859-1");
         String decriptionString = message;

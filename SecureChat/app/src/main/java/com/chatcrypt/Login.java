@@ -89,19 +89,21 @@ public class Login extends AppCompatActivity {
                 fAuth.signInWithEmailAndPassword(mail,password).addOnCompleteListener(new OnCompleteListener<AuthResult>() {
                     @Override
                     public void onComplete(@NonNull Task<AuthResult> task) {
-//                        if(task.isSuccessful()){
-//                            FirebaseUser fuser = fAuth.getCurrentUser();
+                        if(task.isSuccessful()){
+                            FirebaseUser fuser = fAuth.getCurrentUser();
+                            startActivity(new Intent(getApplicationContext(),MainActivity.class));
+                            Toast.makeText(Login.this, "Logged in Successfully", Toast.LENGTH_SHORT).show();
 //                            if(fuser.isEmailVerified()){
 //                                startActivity(new Intent(getApplicationContext(),MainActivity.class));
 //                                Toast.makeText(Login.this, "Logged in Successfully", Toast.LENGTH_SHORT).show();
 //                            }else{
 //                                Toast.makeText(Login.this, "Email is not verified ! ", Toast.LENGTH_SHORT).show();
 //                            }
-//
-//                        }else {
-//                            Toast.makeText(Login.this, "Error ! " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
-//                            progressBar.setVisibility(View.GONE);
-//                        }
+
+                        }else {
+                            Toast.makeText(Login.this, "Error ! " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                            progressBar.setVisibility(View.GONE);
+                        }
 
                     }
                 });

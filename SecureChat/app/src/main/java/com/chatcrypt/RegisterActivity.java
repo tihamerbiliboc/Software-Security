@@ -5,6 +5,8 @@ import androidx.appcompat.widget.Toolbar;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.security.keystore.KeyGenParameterSpec;
+import android.security.keystore.KeyProperties;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
@@ -28,18 +30,24 @@ import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.rengwuxian.materialedittext.MaterialEditText;
 
+import java.io.IOException;
 import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.security.UnrecoverableEntryException;
+import java.security.cert.CertificateException;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
 public class RegisterActivity extends AppCompatActivity {
     public static final String TAG = "TAG";
+    private static final String ANDROID_KEYSTORE = "AndroidKeyStore";
+    private static final String KEY_ALIAS = "cryptoChat";
     MaterialEditText userName, emailAddress, mPassword;
     Button register_btn;
     TextView mLoginBtn;
@@ -53,13 +61,16 @@ public class RegisterActivity extends AppCompatActivity {
     private void generateKeys(){
 
         try {
-            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-            kpg.initialize(2048);
-            KeyPair kp = kpg.genKeyPair();
-            publicKey = kp.getPublic();
-            privateKey = kp.getPrivate();
-            keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
-            keyStore.load(null);
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance(
+                    KeyProperties.KEY_ALGORITHM_RSA, ANDROID_KEYSTORE);
+
+            kpg.initialize(new KeyGenParameterSpec.Builder(
+                    KEY_ALIAS,
+                    KeyProperties.PURPOSE_SIGN | KeyProperties.PURPOSE_VERIFY)
+                    .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512)
+                    .setKeySize(2048)
+                    .build());
+            KeyPair keyPair = kpg.generateKeyPair();
 
         } catch (Exception e) {
             Log.e("Crypto", "RSA key pair error");
@@ -126,17 +137,25 @@ public class RegisterActivity extends AppCompatActivity {
                             Toast.makeText(RegisterActivity.this, "User Created.", Toast.LENGTH_SHORT).show();
                             generateKeys();
                             try {
-                                keyStore.setKeyEntry(user_id, privateKey.getEncoded(), null);
-                                Toast.makeText(RegisterActivity.this, keyStore.getEntry(user_id, null).toString(), Toast.LENGTH_SHORT).show();
+                                keyStore = KeyStore.getInstance(ANDROID_KEYSTORE);
+                                keyStore.load(null);
+                                KeyStore.Entry entry = keyStore.getEntry(KEY_ALIAS, null);
+                                publicKey = keyStore.getCertificate(KEY_ALIAS).getPublicKey();
+
+                                PrivateKey privateKey = ((KeyStore.PrivateKeyEntry) entry).getPrivateKey();
                             } catch (KeyStoreException e) {
                                 e.printStackTrace();
                             } catch (UnrecoverableEntryException e) {
                                 e.printStackTrace();
                             } catch (NoSuchAlgorithmException e) {
                                 e.printStackTrace();
+                            } catch (CertificateException e) {
+                                e.printStackTrace();
+                            } catch (IOException e) {
+                                e.printStackTrace();
                             }
-
-                            User user = new User(user_id, username, publicKey.toString());
+                            String pubkey = MyBase64.encode(publicKey.getEncoded());
+                            User user = new User(user_id, username, pubkey);
                             DatabaseReference mDatabase = FirebaseDatabase.getInstance("https://chatcrypt-23a35-default-rtdb.europe-west1.firebasedatabase.app/").getReference();
                             mDatabase.child("users").child(user_id).setValue(user);
                             startActivity(new Intent(getApplicationContext(), Login.class));
