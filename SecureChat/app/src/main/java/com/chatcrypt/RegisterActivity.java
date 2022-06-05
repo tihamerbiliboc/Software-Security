@@ -50,19 +50,12 @@ public class RegisterActivity extends AppCompatActivity {
         mPassword   = findViewById(R.id.password);
         register_btn= findViewById(R.id.register_button);
         mLoginBtn   = findViewById(R.id.alreadyText);
-
-        fAuth = FirebaseAuth.getInstance();
-
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setTitle("Register");
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
-        if(fAuth.getCurrentUser() != null){
-            startActivity(new Intent(getApplicationContext(),Login.class));
-            finish();
-        }
-
+        fAuth = FirebaseAuth.getInstance();
 
         register_btn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -86,16 +79,10 @@ public class RegisterActivity extends AppCompatActivity {
                     return;
                 }
 
-
-                // register the user in firebase
-
                 fAuth.createUserWithEmailAndPassword(email,password).addOnCompleteListener(new OnCompleteListener<AuthResult>() {
                     @Override
                     public void onComplete(@NonNull Task<AuthResult> task) {
                         if(task.isSuccessful()){
-
-                            // send verification link
-
                             FirebaseUser fuser = fAuth.getCurrentUser();
                             String user_id = fuser.getUid();
                             fuser.sendEmailVerification().addOnSuccessListener(new OnSuccessListener<Void>() {

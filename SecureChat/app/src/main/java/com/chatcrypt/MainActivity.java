@@ -37,25 +37,30 @@ public class MainActivity extends AppCompatActivity {
     public static final String TAG = "TAG";
     Button mLogout;
     TextView userName;
+    FirebaseAuth fAuth;
     FirebaseUser firebaseUser;
     DatabaseReference databaseReference;
+    FirebaseDatabase dbase;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         userName = findViewById(R.id.user_name);
-        firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
+        fAuth = FirebaseAuth.getInstance();
+        firebaseUser = fAuth.getCurrentUser();
+        dbase = FirebaseDatabase.getInstance("https://chatcrypt-23a35-default-rtdb.europe-west1.firebasedatabase.app/");
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setTitle("");
 
-        databaseReference = FirebaseDatabase.getInstance("https://chatcrypt-23a35-default-rtdb.europe-west1.firebasedatabase.app/").getReference("users").child(firebaseUser.getUid());
-        if( firebaseUser == null || firebaseUser.getUid().equals(null)){
+
+        if( firebaseUser == null ){
             startActivity(new Intent(getApplicationContext(),Login.class));
             finish();
         }
+        databaseReference = dbase.getReference("users").child(firebaseUser.getUid());
         databaseReference.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {

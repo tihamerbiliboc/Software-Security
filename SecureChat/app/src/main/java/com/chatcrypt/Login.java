@@ -22,6 +22,7 @@ import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.rengwuxian.materialedittext.MaterialEditText;
 
@@ -30,6 +31,7 @@ public class Login extends AppCompatActivity {
     MaterialEditText emailAddress, mPassword;
     Button mLoginBtn;
     FirebaseAuth fAuth;
+    FirebaseUser firebaseUser;
     ProgressBar progressBar;
     TextView mCreateBtn,forgotTextLink;
 
@@ -43,6 +45,7 @@ public class Login extends AppCompatActivity {
         mPassword = findViewById(R.id.password);
         progressBar = findViewById(R.id.progressBar);
         fAuth = FirebaseAuth.getInstance();
+        firebaseUser = fAuth.getCurrentUser();
         mLoginBtn = findViewById(R.id.login_button);
         mCreateBtn = findViewById(R.id.createNewUserText);
         forgotTextLink = findViewById(R.id.forgotPassword);
@@ -51,6 +54,11 @@ public class Login extends AppCompatActivity {
         setSupportActionBar(toolbar);
         getSupportActionBar().setTitle("Login");
         getSupportActionBar().setDisplayHomeAsUpEnabled(false);
+
+        if( firebaseUser != null ){
+            startActivity(new Intent(getApplicationContext(),MainActivity.class));
+            finish();
+        }
 
         mLoginBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -82,8 +90,14 @@ public class Login extends AppCompatActivity {
                     @Override
                     public void onComplete(@NonNull Task<AuthResult> task) {
                         if(task.isSuccessful()){
-                            Toast.makeText(Login.this, "Logged in Successfully", Toast.LENGTH_SHORT).show();
-                            startActivity(new Intent(getApplicationContext(),MainActivity.class));
+                            FirebaseUser fuser = fAuth.getCurrentUser();
+                            if(fuser.isEmailVerified()){
+                                startActivity(new Intent(getApplicationContext(),MainActivity.class));
+                                Toast.makeText(Login.this, "Logged in Successfully", Toast.LENGTH_SHORT).show();
+                            }else{
+                                Toast.makeText(Login.this, "Email is not verified ! ", Toast.LENGTH_SHORT).show();
+                            }
+
                         }else {
                             Toast.makeText(Login.this, "Error ! " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
                             progressBar.setVisibility(View.GONE);
