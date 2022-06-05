@@ -28,6 +28,13 @@ import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.rengwuxian.materialedittext.MaterialEditText;
 
+import java.security.Key;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.UnrecoverableEntryException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -39,6 +46,25 @@ public class RegisterActivity extends AppCompatActivity {
     FirebaseAuth fAuth;
     DatabaseReference databaseReference;
     String userID;
+    Key publicKey = null;
+    Key privateKey = null;
+    KeyStore keyStore = null;
+
+    private void generateKeys(){
+
+        try {
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+            kpg.initialize(2048);
+            KeyPair kp = kpg.genKeyPair();
+            publicKey = kp.getPublic();
+            privateKey = kp.getPrivate();
+            keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+            keyStore.load(null);
+
+        } catch (Exception e) {
+            Log.e("Crypto", "RSA key pair error");
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -98,11 +124,22 @@ public class RegisterActivity extends AppCompatActivity {
                             });
 
                             Toast.makeText(RegisterActivity.this, "User Created.", Toast.LENGTH_SHORT).show();
-                            User user = new User(user_id, username);
+                            generateKeys();
+                            try {
+                                keyStore.setKeyEntry(user_id, privateKey.getEncoded(), null);
+                                Toast.makeText(RegisterActivity.this, keyStore.getEntry(user_id, null).toString(), Toast.LENGTH_SHORT).show();
+                            } catch (KeyStoreException e) {
+                                e.printStackTrace();
+                            } catch (UnrecoverableEntryException e) {
+                                e.printStackTrace();
+                            } catch (NoSuchAlgorithmException e) {
+                                e.printStackTrace();
+                            }
+
+                            User user = new User(user_id, username, publicKey.toString());
                             DatabaseReference mDatabase = FirebaseDatabase.getInstance("https://chatcrypt-23a35-default-rtdb.europe-west1.firebasedatabase.app/").getReference();
                             mDatabase.child("users").child(user_id).setValue(user);
                             startActivity(new Intent(getApplicationContext(), Login.class));
-
 
                         }else {
                             Toast.makeText(RegisterActivity.this, "Error ! " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();

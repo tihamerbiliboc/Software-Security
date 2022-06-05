@@ -8,6 +8,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Base64;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -26,7 +28,11 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
+import java.security.Key;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -55,6 +61,9 @@ public class MessagingActivity extends AppCompatActivity {
     private byte encryptionKey[] = {-55,26,11,18,5,109,-73,47,91,83,117,101,-22,62,-42,75};
     private Cipher encodeCipher, decodeCipher;
     private SecretKeySpec secretKeySpec;
+    KeyStore keyStore = null;
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,13 +86,18 @@ public class MessagingActivity extends AppCompatActivity {
         linearLayoutManager.setStackFromEnd(true);
         recyclerView.setLayoutManager(linearLayoutManager);
 
-
+        try {
+            keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+        } catch (KeyStoreException e) {
+            e.printStackTrace();
+        }
         user_image = findViewById(R.id.user_image);
         username = findViewById(R.id.user_name);
         send_btn = findViewById(R.id.send_btn);
         send_text = findViewById(R.id.send_text);
         intent = getIntent();
         String uId = intent.getStringExtra("userId");
+        String publicKey = intent.getStringExtra("publicKey");
         firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
 
         try {
@@ -102,7 +116,7 @@ public class MessagingActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
 //                String message = send_text.getText().toString();
-                String message = AESEncryption(send_text.getText().toString());
+                String message = AESEncryption(send_text.getText().toString(), publicKey);
                 if(!message.equals("")){
                     sendMessage(firebaseUser.getUid(), uId, message);
                 }else {
@@ -171,25 +185,24 @@ public class MessagingActivity extends AppCompatActivity {
         });
     }
 
-    private String AESEncryption(String message){
-
-        byte[] stringByte = message.getBytes();
-        byte[] encryptedByte =  new byte[stringByte.length];
-
+    private String AESEncryption(String message, String publicKey){
+        byte[] encodedBytes = null;
+        Key pbk = new SecretKeySpec(publicKey.getBytes(), "RSA");
         try {
-            encodeCipher.init(Cipher.ENCRYPT_MODE, secretKeySpec);
-            encryptedByte = encodeCipher.doFinal(stringByte);
-        } catch (InvalidKeyException e) {
-            e.printStackTrace();
-        } catch (BadPaddingException e) {
-            e.printStackTrace();
-        } catch (IllegalBlockSizeException e) {
-            e.printStackTrace();
+            Cipher c = Cipher.getInstance("RSA");
+            c.init(Cipher.ENCRYPT_MODE, pbk);
+            encodedBytes = c.doFinal(message.getBytes());
+        } catch (Exception e) {
+            Log.e("Crypto", "RSA encryption error");
         }
+
+        Toast.makeText(MessagingActivity.this,"Encoded string: " + new String(Base64.encodeToString(encodedBytes, Base64.DEFAULT)), Toast.LENGTH_SHORT).show();
+
+
         String returnString = null;
         try {
 
-            returnString = new String(encryptedByte, "ISO-8859-1");
+            returnString = new String(encodedBytes, "ISO-8859-1");
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
@@ -197,22 +210,25 @@ public class MessagingActivity extends AppCompatActivity {
     }
 
     private String AESDecryption(String message) throws UnsupportedEncodingException {
+
+        // Decode the encoded data with the RSA public key
+        byte[] decodedBytes = null;
+        try {
+            Cipher c = Cipher.getInstance("RSA");
+            c.init(Cipher.DECRYPT_MODE, (Key) keyStore.getEntry(firebaseUser.getUid().toString(),null));
+            decodedBytes = c.doFinal(message.getBytes());
+        } catch (Exception e) {
+            Log.e("Crypto", "RSA decryption error");
+        }
+
+        Toast.makeText(MessagingActivity.this,"Decoded string: " + new String(decodedBytes), Toast.LENGTH_SHORT).show();
+
         byte[] encryptedByte = message.getBytes("ISO-8859-1");
         String decriptionString = message;
         byte[] decryption;
 
-        try {
-            decodeCipher.init(Cipher.DECRYPT_MODE, secretKeySpec);
-            decryption = decodeCipher.doFinal(encryptedByte);
-            decriptionString = new String(decryption);
-        } catch (InvalidKeyException e) {
-            e.printStackTrace();
-        } catch (BadPaddingException e) {
-            e.printStackTrace();
-        } catch (IllegalBlockSizeException e) {
-            e.printStackTrace();
-        }
-        return decriptionString;
+
+        return new String(decodedBytes);
 
     }
 }
