@@ -64,8 +64,15 @@ public class MainActivity extends AppCompatActivity {
         databaseReference.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                User user = snapshot.getValue(User.class);
-                userName.setText(user.getUserName());
+                try{
+                    User user = snapshot.getValue(User.class);
+                    userName.setText(user.getUserName());
+                } catch (NullPointerException e) {
+                    startActivity(new Intent(getApplicationContext(),RegisterActivity.class));
+                    finish();
+                    e.printStackTrace();
+                }
+
             }
 
             @Override

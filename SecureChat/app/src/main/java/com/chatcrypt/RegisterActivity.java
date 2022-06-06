@@ -52,10 +52,7 @@ public class RegisterActivity extends AppCompatActivity {
     Button register_btn;
     TextView mLoginBtn;
     FirebaseAuth fAuth;
-    DatabaseReference databaseReference;
-    String userID;
     Key publicKey = null;
-    Key privateKey = null;
     KeyStore keyStore = null;
 
     private void generateKeys(){
@@ -66,7 +63,7 @@ public class RegisterActivity extends AppCompatActivity {
 
             kpg.initialize(new KeyGenParameterSpec.Builder(
                     KEY_ALIAS,
-                    KeyProperties.PURPOSE_SIGN | KeyProperties.PURPOSE_VERIFY)
+                    KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
                     .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512)
                     .setKeySize(2048)
                     .build());
@@ -141,8 +138,6 @@ public class RegisterActivity extends AppCompatActivity {
                                 keyStore.load(null);
                                 KeyStore.Entry entry = keyStore.getEntry(KEY_ALIAS, null);
                                 publicKey = keyStore.getCertificate(KEY_ALIAS).getPublicKey();
-
-                                PrivateKey privateKey = ((KeyStore.PrivateKeyEntry) entry).getPrivateKey();
                             } catch (KeyStoreException e) {
                                 e.printStackTrace();
                             } catch (UnrecoverableEntryException e) {
