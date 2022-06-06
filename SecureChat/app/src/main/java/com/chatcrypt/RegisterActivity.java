@@ -53,21 +53,18 @@ public class RegisterActivity extends AppCompatActivity {
     TextView mLoginBtn;
     FirebaseAuth fAuth;
     Key publicKey = null;
+    Key privateKey = null;
     KeyStore keyStore = null;
 
     private void generateKeys(){
 
         try {
-            KeyPairGenerator kpg = KeyPairGenerator.getInstance(
-                    KeyProperties.KEY_ALGORITHM_RSA, ANDROID_KEYSTORE);
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+            kpg.initialize(2048);
+            KeyPair kp = kpg.genKeyPair();
+            publicKey = kp.getPublic();
+            privateKey = kp.getPrivate();
 
-            kpg.initialize(new KeyGenParameterSpec.Builder(
-                    KEY_ALIAS,
-                    KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
-                    .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512)
-                    .setKeySize(2048)
-                    .build());
-            KeyPair keyPair = kpg.generateKeyPair();
 
         } catch (Exception e) {
             Log.e("Crypto", "RSA key pair error");
@@ -133,24 +130,25 @@ public class RegisterActivity extends AppCompatActivity {
 
                             Toast.makeText(RegisterActivity.this, "User Created.", Toast.LENGTH_SHORT).show();
                             generateKeys();
-                            try {
-                                keyStore = KeyStore.getInstance(ANDROID_KEYSTORE);
-                                keyStore.load(null);
-                                KeyStore.Entry entry = keyStore.getEntry(KEY_ALIAS, null);
-                                publicKey = keyStore.getCertificate(KEY_ALIAS).getPublicKey();
-                            } catch (KeyStoreException e) {
-                                e.printStackTrace();
-                            } catch (UnrecoverableEntryException e) {
-                                e.printStackTrace();
-                            } catch (NoSuchAlgorithmException e) {
-                                e.printStackTrace();
-                            } catch (CertificateException e) {
-                                e.printStackTrace();
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
+//                            try {
+//                                keyStore = KeyStore.getInstance(ANDROID_KEYSTORE);
+//                                keyStore.load(null);
+//                                KeyStore.Entry entry = keyStore.getEntry(KEY_ALIAS, null);
+//                                publicKey = keyStore.getCertificate(KEY_ALIAS).getPublicKey();
+//                            } catch (KeyStoreException e) {
+//                                e.printStackTrace();
+//                            } catch (UnrecoverableEntryException e) {
+//                                e.printStackTrace();
+//                            } catch (NoSuchAlgorithmException e) {
+//                                e.printStackTrace();
+//                            } catch (CertificateException e) {
+//                                e.printStackTrace();
+//                            } catch (IOException e) {
+//                                e.printStackTrace();
+//                            }
                             String pubkey = MyBase64.encode(publicKey.getEncoded());
-                            User user = new User(user_id, username, pubkey);
+                            String privkey = MyBase64.encode(privateKey.getEncoded());
+                            User user = new User(user_id, username, pubkey, privkey);
                             DatabaseReference mDatabase = FirebaseDatabase.getInstance("https://chatcrypt-23a35-default-rtdb.europe-west1.firebasedatabase.app/").getReference();
                             mDatabase.child("users").child(user_id).setValue(user);
                             startActivity(new Intent(getApplicationContext(), Login.class));

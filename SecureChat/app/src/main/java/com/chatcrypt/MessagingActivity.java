@@ -44,6 +44,7 @@ import java.security.PublicKey;
 import java.security.UnrecoverableEntryException;
 import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -70,7 +71,8 @@ public class MessagingActivity extends AppCompatActivity {
     RecyclerView recyclerView;
     KeyStore keyStore = null;
     String publicKey;
-    PrivateKey privateKey;
+    String privateKey;
+//    PrivateKey privateKey;
 
 
 
@@ -117,6 +119,7 @@ public class MessagingActivity extends AppCompatActivity {
                 username.setText(user.getUserName());
                 readMessage(firebaseUser.getUid(), uId);
                 publicKey = user.getPublicKey();
+                privateKey = user.getPrivateKey();
             }
 
             @Override
@@ -128,12 +131,10 @@ public class MessagingActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
 //                String message = send_text.getText().toString();
-                String message = null;
+                String message = "";
                 try {
                     message = AESEncryption(send_text.getText().toString(), publicKey);
-                } catch (NoSuchAlgorithmException e) {
-                    e.printStackTrace();
-                } catch (InvalidKeySpecException e) {
+                } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
                     e.printStackTrace();
                 }
                 if(!message.equals("")){
@@ -170,8 +171,8 @@ public class MessagingActivity extends AppCompatActivity {
                     if(messages.getReceiver().equals(myId) && messages.getSender().equals(userId) ||
                             messages.getReceiver().equals(userId) && messages.getSender().equals(myId)){
                         try {
-                            messages.setMessage(AESDecryption(messages.getMessage()));
-                        } catch (IOException | KeyStoreException | CertificateException | NoSuchAlgorithmException | UnrecoverableEntryException e) {
+                            messages.setMessage(AESDecryption(messages.getMessage(), privateKey));
+                        } catch (IOException | KeyStoreException | CertificateException | NoSuchAlgorithmException | UnrecoverableEntryException | InvalidKeySpecException e) {
                             e.printStackTrace();
                         }
                         mMessages.add(messages);
@@ -197,12 +198,14 @@ public class MessagingActivity extends AppCompatActivity {
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         PublicKey pubKey = keyFactory.generatePublic(keySpec);
 
+        Toast.makeText(MessagingActivity.this, pubKey.toString(),Toast.LENGTH_SHORT);
         try {
             Cipher c = Cipher.getInstance("RSA");
             c.init(Cipher.ENCRYPT_MODE, pubKey);
             encodedBytes = c.doFinal(message.getBytes());
         } catch (Exception e) {
             Log.e("Crypto", "RSA encryption error");
+            Log.e("Crypto", e.getMessage());
         }
 
         String returnString = null;
@@ -215,20 +218,27 @@ public class MessagingActivity extends AppCompatActivity {
         return returnString;
     }
 
-    private String AESDecryption(String message) throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException, UnrecoverableEntryException {
-        keyStore = KeyStore.getInstance("AndroidKeyStore");
-        keyStore.load(null);
-        privateKey = getprivateKey("cryptoChat");
+    private String AESDecryption(String message, String privateKey) throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException, UnrecoverableEntryException, InvalidKeySpecException {
+
+        byte[] privateBytes = MyBase64.decode(privateKey);
+        PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(privateBytes);
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        PrivateKey privKey = keyFactory.generatePrivate(keySpec);
+//        keyStore = KeyStore.getInstance("AndroidKeyStore");
+//        keyStore.load(null);
+//        privateKey = getprivateKey("cryptoChat");
+        Toast.makeText(MessagingActivity.this, privKey.toString(),Toast.LENGTH_SHORT);
         byte[] encryptedByte = message.getBytes("ISO-8859-1");
         String decryptionString = message;
         byte[] decryption;
         try {
             Cipher c = Cipher.getInstance("RSA");
-            c.init(Cipher.DECRYPT_MODE, privateKey);
+            c.init(Cipher.DECRYPT_MODE, privKey);
             decryption = c.doFinal(message.getBytes());
             decryptionString = new String(decryption);
         } catch (Exception e) {
             Log.e("Crypto", "RSA decryption error");
+            Log.e("Crypto", e.getMessage());
         }
         return decryptionString;
     }
@@ -237,9 +247,8 @@ public class MessagingActivity extends AppCompatActivity {
         keyStore = KeyStore.getInstance("AndroidKeyStore");
         keyStore.load(null);
         if (keyStore.containsAlias(alias)) {
-
             KeyStore.Entry entry = keyStore.getEntry("cryptoChat", null);
-            Toast.makeText(MessagingActivity.this, ((KeyStore.PrivateKeyEntry) entry).getPrivateKey().toString(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(MessagingActivity.this, ((KeyStore.PrivateKeyEntry) entry).getPrivateKey().toString(), Toast.LENGTH_LONG).show();
             return ((KeyStore.PrivateKeyEntry) entry).getPrivateKey();
         } else{
             Toast.makeText(MessagingActivity.this, "could not found key", Toast.LENGTH_SHORT).show();
