@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
@@ -73,9 +74,7 @@ public class MessagingActivity extends AppCompatActivity {
     KeyStore keyStore = null;
     String publicKey;
     String privateKey;
-//    PrivateKey privateKey;
-
-
+    String current;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -109,6 +108,7 @@ public class MessagingActivity extends AppCompatActivity {
         send_text = findViewById(R.id.send_text);
         intent = getIntent();
         String uId = intent.getStringExtra("userId");
+        mMessages =  new ArrayList<>();
 
         firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
 
@@ -120,7 +120,7 @@ public class MessagingActivity extends AppCompatActivity {
                 username.setText(user.getUserName());
                 readMessage(firebaseUser.getUid(), uId);
                 publicKey = user.getPublicKey();
-                privateKey = user.getPrivateKey();
+
             }
 
             @Override
@@ -131,8 +131,8 @@ public class MessagingActivity extends AppCompatActivity {
         send_btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-//                String message = send_text.getText().toString();
                 String message = "";
+                current = send_text.getText().toString();
                 message = encryptData(send_text.getText().toString(), publicKey);
                 if(!message.equals("")){
                     sendMessage(firebaseUser.getUid(), uId, message);
@@ -143,7 +143,6 @@ public class MessagingActivity extends AppCompatActivity {
 
             }
         });
-
     }
 
     private void sendMessage(String sender, String receiver, String message){
@@ -157,7 +156,8 @@ public class MessagingActivity extends AppCompatActivity {
     }
 
     private void readMessage(String myId, String userId){
-        mMessages =  new ArrayList<>();
+        SharedPreferences sh = getSharedPreferences("ChatCryptPref", MODE_PRIVATE);
+
         databaseReference = FirebaseDatabase.getInstance("https://chatcrypt-23a35-default-rtdb.europe-west1.firebasedatabase.app/").getReference().child("Messaging");
         databaseReference.addValueEventListener(new ValueEventListener() {
             @Override
@@ -165,20 +165,25 @@ public class MessagingActivity extends AppCompatActivity {
                 mMessages.clear();
                 for(DataSnapshot dataSnapshot : snapshot.getChildren()){
                     Messages messages = dataSnapshot.getValue(Messages.class);
-                    if(messages.getReceiver().equals(myId) && messages.getSender().equals(userId) ||
-                            messages.getReceiver().equals(userId) && messages.getSender().equals(myId)){
+                    if(messages.getReceiver().equals(myId) && messages.getSender().equals(userId)){
                         try {
+                            privateKey = sh.getString("myKey", "default");
                             messages.setMessage(decryptData(messages.getMessage(), privateKey));
                         } catch (InvalidKeySpecException e) {
                             e.printStackTrace();
                         }
                         mMessages.add(messages);
+
+                    }else if((messages.getReceiver().equals(userId) && messages.getSender().equals(myId))){
+                        messages.setMessage(current);
+                        mMessages.add(messages);
+
                     }
+
+
                     messageAdapter = new MessageAdapter(MessagingActivity.this, mMessages);
                     recyclerView.setAdapter(messageAdapter);
-
                 }
-
             }
 
             @Override
@@ -188,57 +193,6 @@ public class MessagingActivity extends AppCompatActivity {
         });
     }
 
-//    private String AESEncryption(String message, String publicKey) throws NoSuchAlgorithmException, InvalidKeySpecException {
-//        byte[] encodedBytes = null;
-//        byte[] publicBytes = MyBase64.decode(publicKey);
-//        X509EncodedKeySpec keySpec = new X509EncodedKeySpec(publicBytes);
-//        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-//        PublicKey pubKey = keyFactory.generatePublic(keySpec);
-//
-//        Toast.makeText(MessagingActivity.this, pubKey.toString(),Toast.LENGTH_SHORT);
-//        try {
-//            Cipher c = Cipher.getInstance("RSA");
-//            c.init(Cipher.ENCRYPT_MODE, pubKey);
-//            encodedBytes = c.doFinal(message.getBytes());
-//        } catch (Exception e) {
-//            Log.e("Crypto", "RSA encryption error");
-//            Log.e("Crypto", e.getMessage());
-//        }
-//
-//        String returnString = null;
-//        try {
-//
-//            returnString = new String(encodedBytes, "ISO-8859-1");
-//        } catch (UnsupportedEncodingException e) {
-//            e.printStackTrace();
-//        }
-//        return returnString;
-//    }
-
-//    private String AESDecryption(String message, String privateKey) throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException, UnrecoverableEntryException, InvalidKeySpecException {
-//
-//        byte[] privateBytes = MyBase64.decode(privateKey);
-//        PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(privateBytes);
-//        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-//        PrivateKey privKey = keyFactory.generatePrivate(keySpec);
-////        keyStore = KeyStore.getInstance("AndroidKeyStore");
-////        keyStore.load(null);
-////        privateKey = getprivateKey("cryptoChat");
-//        Toast.makeText(MessagingActivity.this, privKey.toString(),Toast.LENGTH_SHORT);
-//        byte[] encryptedByte = message.getBytes("ISO-8859-1");
-//        String decryptionString = message;
-//        byte[] decryption;
-//        try {
-//            Cipher c = Cipher.getInstance("RSA");
-//            c.init(Cipher.DECRYPT_MODE, privKey);
-//            decryption = c.doFinal(message.getBytes());
-//            decryptionString = new String(decryption);
-//        } catch (Exception e) {
-//            Log.e("Crypto", "RSA decryption error");
-//            Log.e("Crypto", e.getMessage());
-//        }
-//        return decryptionString;
-//    }
     public static String encryptData(String text, String pub_key) {
         try {
             byte[] data = text.getBytes("utf-8");

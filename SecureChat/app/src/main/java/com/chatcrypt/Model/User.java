@@ -5,13 +5,13 @@ public class User {
     private String userId;
     private String userName;
     private String publicKey;
-    private String privateKey;
+
 
     public User(String userId, String userName, String publicKey, String privateKey) {
         this.userId = userId;
         this.userName = userName;
         this.publicKey = publicKey;
-        this.privateKey = privateKey;
+
     }
 
 
@@ -19,9 +19,6 @@ public class User {
 
     }
 
-    public String getPrivateKey() { return privateKey; }
-
-    public void setPrivateKey(String privateKey) { this.privateKey = privateKey; }
 
     public String getPublicKey() { return publicKey; }
 
