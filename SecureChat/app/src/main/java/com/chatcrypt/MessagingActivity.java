@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
+import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
@@ -132,11 +133,7 @@ public class MessagingActivity extends AppCompatActivity {
             public void onClick(View view) {
 //                String message = send_text.getText().toString();
                 String message = "";
-                try {
-                    message = AESEncryption(send_text.getText().toString(), publicKey);
-                } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-                    e.printStackTrace();
-                }
+                message = encryptData(send_text.getText().toString(), publicKey);
                 if(!message.equals("")){
                     sendMessage(firebaseUser.getUid(), uId, message);
                 }else {
@@ -171,8 +168,8 @@ public class MessagingActivity extends AppCompatActivity {
                     if(messages.getReceiver().equals(myId) && messages.getSender().equals(userId) ||
                             messages.getReceiver().equals(userId) && messages.getSender().equals(myId)){
                         try {
-                            messages.setMessage(AESDecryption(messages.getMessage(), privateKey));
-                        } catch (IOException | KeyStoreException | CertificateException | NoSuchAlgorithmException | UnrecoverableEntryException | InvalidKeySpecException e) {
+                            messages.setMessage(decryptData(messages.getMessage(), privateKey));
+                        } catch (InvalidKeySpecException e) {
                             e.printStackTrace();
                         }
                         mMessages.add(messages);
@@ -191,68 +188,97 @@ public class MessagingActivity extends AppCompatActivity {
         });
     }
 
-    private String AESEncryption(String message, String publicKey) throws NoSuchAlgorithmException, InvalidKeySpecException {
-        byte[] encodedBytes = null;
-        byte[] publicBytes = MyBase64.decode(publicKey);
-        X509EncodedKeySpec keySpec = new X509EncodedKeySpec(publicBytes);
-        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-        PublicKey pubKey = keyFactory.generatePublic(keySpec);
+//    private String AESEncryption(String message, String publicKey) throws NoSuchAlgorithmException, InvalidKeySpecException {
+//        byte[] encodedBytes = null;
+//        byte[] publicBytes = MyBase64.decode(publicKey);
+//        X509EncodedKeySpec keySpec = new X509EncodedKeySpec(publicBytes);
+//        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+//        PublicKey pubKey = keyFactory.generatePublic(keySpec);
+//
+//        Toast.makeText(MessagingActivity.this, pubKey.toString(),Toast.LENGTH_SHORT);
+//        try {
+//            Cipher c = Cipher.getInstance("RSA");
+//            c.init(Cipher.ENCRYPT_MODE, pubKey);
+//            encodedBytes = c.doFinal(message.getBytes());
+//        } catch (Exception e) {
+//            Log.e("Crypto", "RSA encryption error");
+//            Log.e("Crypto", e.getMessage());
+//        }
+//
+//        String returnString = null;
+//        try {
+//
+//            returnString = new String(encodedBytes, "ISO-8859-1");
+//        } catch (UnsupportedEncodingException e) {
+//            e.printStackTrace();
+//        }
+//        return returnString;
+//    }
 
-        Toast.makeText(MessagingActivity.this, pubKey.toString(),Toast.LENGTH_SHORT);
+//    private String AESDecryption(String message, String privateKey) throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException, UnrecoverableEntryException, InvalidKeySpecException {
+//
+//        byte[] privateBytes = MyBase64.decode(privateKey);
+//        PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(privateBytes);
+//        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+//        PrivateKey privKey = keyFactory.generatePrivate(keySpec);
+////        keyStore = KeyStore.getInstance("AndroidKeyStore");
+////        keyStore.load(null);
+////        privateKey = getprivateKey("cryptoChat");
+//        Toast.makeText(MessagingActivity.this, privKey.toString(),Toast.LENGTH_SHORT);
+//        byte[] encryptedByte = message.getBytes("ISO-8859-1");
+//        String decryptionString = message;
+//        byte[] decryption;
+//        try {
+//            Cipher c = Cipher.getInstance("RSA");
+//            c.init(Cipher.DECRYPT_MODE, privKey);
+//            decryption = c.doFinal(message.getBytes());
+//            decryptionString = new String(decryption);
+//        } catch (Exception e) {
+//            Log.e("Crypto", "RSA decryption error");
+//            Log.e("Crypto", e.getMessage());
+//        }
+//        return decryptionString;
+//    }
+    public static String encryptData(String text, String pub_key) {
         try {
-            Cipher c = Cipher.getInstance("RSA");
-            c.init(Cipher.ENCRYPT_MODE, pubKey);
-            encodedBytes = c.doFinal(message.getBytes());
+            byte[] data = text.getBytes("utf-8");
+            PublicKey publicKey = getPublicKey(Base64.decode(pub_key.getBytes("utf-8"), Base64.DEFAULT));
+            Cipher cipher = Cipher.getInstance("RSA");
+            cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+            return Base64.encodeToString(cipher.doFinal(data),Base64.DEFAULT);
         } catch (Exception e) {
-            Log.e("Crypto", "RSA encryption error");
-            Log.e("Crypto", e.getMessage());
-        }
-
-        String returnString = null;
-        try {
-
-            returnString = new String(encodedBytes, "ISO-8859-1");
-        } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
-        }
-        return returnString;
-    }
-
-    private String AESDecryption(String message, String privateKey) throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException, UnrecoverableEntryException, InvalidKeySpecException {
-
-        byte[] privateBytes = MyBase64.decode(privateKey);
-        PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(privateBytes);
-        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-        PrivateKey privKey = keyFactory.generatePrivate(keySpec);
-//        keyStore = KeyStore.getInstance("AndroidKeyStore");
-//        keyStore.load(null);
-//        privateKey = getprivateKey("cryptoChat");
-        Toast.makeText(MessagingActivity.this, privKey.toString(),Toast.LENGTH_SHORT);
-        byte[] encryptedByte = message.getBytes("ISO-8859-1");
-        String decryptionString = message;
-        byte[] decryption;
-        try {
-            Cipher c = Cipher.getInstance("RSA");
-            c.init(Cipher.DECRYPT_MODE, privKey);
-            decryption = c.doFinal(message.getBytes());
-            decryptionString = new String(decryption);
-        } catch (Exception e) {
-            Log.e("Crypto", "RSA decryption error");
-            Log.e("Crypto", e.getMessage());
-        }
-        return decryptionString;
-    }
-
-    private PrivateKey getprivateKey(String alias) throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException, UnrecoverableEntryException {
-        keyStore = KeyStore.getInstance("AndroidKeyStore");
-        keyStore.load(null);
-        if (keyStore.containsAlias(alias)) {
-            KeyStore.Entry entry = keyStore.getEntry("cryptoChat", null);
-            Toast.makeText(MessagingActivity.this, ((KeyStore.PrivateKeyEntry) entry).getPrivateKey().toString(), Toast.LENGTH_LONG).show();
-            return ((KeyStore.PrivateKeyEntry) entry).getPrivateKey();
-        } else{
-            Toast.makeText(MessagingActivity.this, "could not found key", Toast.LENGTH_SHORT).show();
             return null;
         }
     }
+    public static String decryptData(String text, String pri_key) throws InvalidKeySpecException {
+        try {
+            byte[] data =Base64.decode(text,Base64.DEFAULT);
+            PrivateKey privateKey = getPrivateKey(Base64.decode(pri_key.getBytes("utf-8"),Base64.DEFAULT));
+            Cipher cipher = Cipher.getInstance("RSA");
+            cipher.init(Cipher.DECRYPT_MODE, privateKey);
+            return new String(cipher.doFinal(data),"utf-8");
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+
+    public static PublicKey getPublicKey(byte[] keyBytes) throws NoSuchAlgorithmException, InvalidKeySpecException {
+        X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        return keyFactory.generatePublic(keySpec);
+    }
+
+
+    public static PrivateKey getPrivateKey(byte[] keyBytes) throws NoSuchAlgorithmException,
+            InvalidKeySpecException {
+        PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        return keyFactory.generatePrivate(keySpec);
+    }
+
+
+
+
 }
