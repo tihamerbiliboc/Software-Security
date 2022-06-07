@@ -93,6 +93,12 @@ public class Login extends AppCompatActivity {
                             FirebaseUser fuser = fAuth.getCurrentUser();
                             if(fuser.isEmailVerified()){
                                 startActivity(new Intent(getApplicationContext(),MainActivity.class));
+                                //                            if(fuser.isEmailVerified()){
+//                                startActivity(new Intent(getApplicationContext(),MainActivity.class));
+//                                Toast.makeText(Login.this, "Logged in Successfully", Toast.LENGTH_SHORT).show();
+//                            }else{
+//                                Toast.makeText(Login.this, "Email is not verified ! ", Toast.LENGTH_SHORT).show();
+//                            }
                                 Toast.makeText(Login.this, "Logged in Successfully", Toast.LENGTH_SHORT).show();
                             }else{
                                 Toast.makeText(Login.this, "Email is not verified ! ", Toast.LENGTH_SHORT).show();
