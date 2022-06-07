@@ -67,6 +67,7 @@ public class MessagingActivity extends AppCompatActivity {
 
     FirebaseUser firebaseUser;
     DatabaseReference databaseReference;
+    DatabaseReference mdatabaseReference;
     Intent intent;
     MessageAdapter messageAdapter;
     List<Messages> mMessages;
@@ -74,7 +75,7 @@ public class MessagingActivity extends AppCompatActivity {
     KeyStore keyStore = null;
     String publicKey;
     String privateKey;
-    String current;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -108,10 +109,10 @@ public class MessagingActivity extends AppCompatActivity {
         send_text = findViewById(R.id.send_text);
         intent = getIntent();
         String uId = intent.getStringExtra("userId");
-        mMessages =  new ArrayList<>();
+
+
 
         firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
-
         databaseReference = FirebaseDatabase.getInstance("https://chatcrypt-23a35-default-rtdb.europe-west1.firebasedatabase.app/").getReference("users").child(uId);
         databaseReference.addValueEventListener(new ValueEventListener() {
             @Override
@@ -132,15 +133,15 @@ public class MessagingActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 String message = "";
-                current = send_text.getText().toString();
                 message = encryptData(send_text.getText().toString(), publicKey);
                 if(!message.equals("")){
                     sendMessage(firebaseUser.getUid(), uId, message);
+
                 }else {
                     Toast.makeText(MessagingActivity.this, "There is no message to send", Toast.LENGTH_SHORT).show();
                 }
-                send_text.setText("");
 
+                send_text.setText("");
             }
         });
     }
@@ -152,12 +153,13 @@ public class MessagingActivity extends AppCompatActivity {
         hashMap.put("sender", sender);
         hashMap.put("receiver", receiver);
         hashMap.put("message", message);
+
         databaseReference.child("Messaging").push().setValue(hashMap);
     }
 
     private void readMessage(String myId, String userId){
         SharedPreferences sh = getSharedPreferences("ChatCryptPref", MODE_PRIVATE);
-
+        mMessages =  new ArrayList<>();
         databaseReference = FirebaseDatabase.getInstance("https://chatcrypt-23a35-default-rtdb.europe-west1.firebasedatabase.app/").getReference().child("Messaging");
         databaseReference.addValueEventListener(new ValueEventListener() {
             @Override
@@ -165,7 +167,8 @@ public class MessagingActivity extends AppCompatActivity {
                 mMessages.clear();
                 for(DataSnapshot dataSnapshot : snapshot.getChildren()){
                     Messages messages = dataSnapshot.getValue(Messages.class);
-                    if(messages.getReceiver().equals(myId) && messages.getSender().equals(userId)){
+                    if(messages.getReceiver().equals(myId) && messages.getSender().equals(userId)||
+                            messages.getReceiver().equals(userId) && messages.getSender().equals(myId)) {
                         try {
                             privateKey = sh.getString("myKey", "default");
                             messages.setMessage(decryptData(messages.getMessage(), privateKey));
@@ -173,14 +176,7 @@ public class MessagingActivity extends AppCompatActivity {
                             e.printStackTrace();
                         }
                         mMessages.add(messages);
-
-                    }else if((messages.getReceiver().equals(userId) && messages.getSender().equals(myId))){
-                        messages.setMessage(current);
-                        mMessages.add(messages);
-
                     }
-
-
                     messageAdapter = new MessageAdapter(MessagingActivity.this, mMessages);
                     recyclerView.setAdapter(messageAdapter);
                 }

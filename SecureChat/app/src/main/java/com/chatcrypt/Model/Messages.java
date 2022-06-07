@@ -5,10 +5,12 @@ public class Messages {
     private String receiver;
     private String message;
 
+
     public Messages(String sender, String receiver, String message) {
         this.sender = sender;
         this.receiver = receiver;
         this.message = message;
+
     }
 
     public Messages() {
@@ -37,4 +39,6 @@ public class Messages {
     public void setMessage(String message) {
         this.message = message;
     }
+
+
 }
